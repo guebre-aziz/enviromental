@@ -24,12 +24,10 @@ const schema = new mongoose.Schema({
     img: {
         data: Buffer,
         contentType: String
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
     }
-})
+},
+    {timestamps: true}
+)
 
 const SiteReportDB = mongoose.model("report-db", schema)
 

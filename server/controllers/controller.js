@@ -1,5 +1,6 @@
 const SiteReportDB = require("../models/models")
 const upload = require("../services/upload")
+const fs = require("fs")
 
 // create new report
 exports.create = (req, res) => {
@@ -11,7 +12,6 @@ exports.create = (req, res) => {
             .send({message: "Body cannot be empty"})
             return
         }
-        
 
         // new report
         const report = new SiteReportDB({
@@ -19,10 +19,9 @@ exports.create = (req, res) => {
             description: req.body.description,
             where: req.body.where,
             geoCoord: JSON.parse(req.body.geoCoord),
-            createdAt: new Date(),
             imgUrl: req.file.path,
             img: {
-                data: req.file.filename,
+                data: fs.readFileSync(req.file.path),
                 contentType: req.file.mimetype
             }
         })
@@ -44,7 +43,7 @@ exports.create = (req, res) => {
 })}
 
 
-// retrive and return a single (if id is there) or all the reports
+// retrive and return a single (if id is provided) or all the reports
 exports.find = (req, res) => {
 
     // return single report
@@ -62,7 +61,7 @@ exports.find = (req, res) => {
             })
             .catch(err => {
                 res.status(500)
-                   .send({ message: err.message || `error retriving user with id ${id}`})
+                   .send({ message: err.message || `error retriving report with id ${id}`})
             })
     } else {
         SiteReportDB.find()
@@ -78,27 +77,38 @@ exports.find = (req, res) => {
 
 // update a report with given an id
 exports.update = (req, res) => {
+    upload(req, res, (err)=>{
     if(!req.body){
         return res.status(400)
-                  .send({ message: "Data to update can not be empty"})
+                  .send({ message : "Data to update can not be empty"})
     }
 
-    const id = req.query.id
+    const id = req.params.id;
+    const image = fs.readFileSync(req.file.path)
 
-    SiteReportDB.findByIdAndUpdate(id, req.body, {useFindAndModify: false})
-                .then(data => {
-                    if(!data){
-                        res.status(404)
-                        .send({ message : `Cannot Update user with ${id}. Maybe user not found!`})
-                    } else {
-                        res.send(data)
-                    }
-                })
-                .catch(err =>{
-                    res.status(500)
-                    .send({ message : "Error Update user information"})
-                })
-}
+    SiteReportDB.findByIdAndUpdate({_id: id}, {
+        title: req.body.title,
+        description: req.body.description,
+        where: req.body.where,
+        geoCoord: JSON.parse(req.body.geoCoord),
+        imgUrl: req.file.path,
+        img: {
+            data: image,
+            contentType: req.file.mimetype
+        }
+       
+        },
+        { returnOriginal: false }
+    ).then(data => {
+        console.log(data.img)
+        var thumb = new Buffer(data.img.data).toString('base64');
+
+        res.status(200)
+           .send(req.file)
+    }).catch(err => {
+        console.log(err)
+    })
+})}
 
 // delete report
 exports.delete = (req, res) => {
